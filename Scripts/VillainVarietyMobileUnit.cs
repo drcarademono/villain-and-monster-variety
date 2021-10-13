@@ -12,28 +12,30 @@ using System.Collections;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using System.Collections.Generic;
+using DaggerfallWorkshop.Game.Utility.ModSupport;
 
 public class VillainVarietyMobileUnit : MobileUnit
 {
-    readonly int[] HammerfellReplacedIds = new int[]
+    const string ModGuid = "d31aac70-5828-46e2-a9c4-19f32180813c";
+
+    const int BretonNordFaceCount = 10;
+    const int RedguardFaceCount = 5;
+
+    static Dictionary<string, Texture2D[][]> textureCache = new Dictionary<string, Texture2D[][]>();
+
+    bool importedTexturesVV = false;
+
+    static Mod _mod;
+    static Mod mod
     {
-        // 475,
-        // 476,
-        // 477,
-        // 478,
-        // 479,
-        // 480,
-        481,
-        482,
-        483,
-        484,
-        485,
-        486,
-        487,
-        488,
-        //  489,
-        //  490,
-    };
+        get
+        {
+            if(_mod == null)
+                _mod = ModManager.Instance.GetModFromGUID(ModGuid);
+            return _mod;
+        }
+    }
 
     #region Original Code
     const int numberOrientations = 8;
@@ -567,17 +569,6 @@ public class VillainVarietyMobileUnit : MobileUnit
     /// <returns>Texture archive index.</returns>
     private int GetTextureArchive()
     {
-        /****** VILLAIN VARIETY *********/
-        if (summary.Enemy.ID >= (int)MobileTypes.Mage && summary.Enemy.ID <= (int)MobileTypes.Knight && IsInHammerfell())
-        {
-            var texture = summary.Enemy.Gender == MobileGender.Male || summary.Enemy.Gender == MobileGender.Unspecified ? summary.Enemy.MaleTexture : summary.Enemy.FemaleTexture;
-            if(HammerfellReplacedIds.Contains(texture))
-            {
-                return 1000 + texture;
-            }
-        }
-        /****** VILLAIN VARIETY *********/
-
         // If human with unspecified gender then randomise gender
         if (summary.Enemy.Affinity == MobileAffinity.Human && summary.Enemy.Gender == MobileGender.Unspecified)
         {
@@ -688,7 +679,8 @@ public class VillainVarietyMobileUnit : MobileUnit
         meshFilter.sharedMesh = mesh;
 
         // Create material
-        Material material = TextureReplacement.GetMobileBillboardMaterial(archive, GetComponent<MeshFilter>(), ref summary.ImportedTextures) ??
+        Material material = LoadVillainVariant(archive, meshFilter, ref summary.ImportedTextures) ??
+            TextureReplacement.GetMobileBillboardMaterial(archive, GetComponent<MeshFilter>(), ref summary.ImportedTextures) ??
             dfUnity.MaterialReader.GetMaterialAtlas(
             archive,
             0,
@@ -882,4 +874,120 @@ public class VillainVarietyMobileUnit : MobileUnit
 
         return false;
     }
+
+    string GetImageName(int archive, int record, int frame, int face, string outfit)
+    {
+        return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfit);
+    }
+
+    string GetImageName(int archive, int record, int frame, string outfit)
+    {
+        return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfit);
+    }
+
+    string GetImageName(int archive, int record, int frame, int? face, string outfit)
+    {
+        if(face.HasValue)
+        {
+            return GetImageName(archive, record, frame, face.Value, outfit);
+        }
+        else
+        {
+            return GetImageName(archive, record, frame, outfit);
+        }
+    }
+
+    Material LoadVillainVariant(int archive, MeshFilter meshFilter, ref MobileBillboardImportedTextures importedTextures)
+    {
+        int face = SelectFace();
+        string outfit = SelectOutfit(archive);
+
+        Material material = MaterialReader.CreateBillboardMaterial();
+
+        string firstFrameName = GetImageName(archive, 0, 0, face, outfit);
+        if(!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
+        {
+            string classicFilename = TextureFile.IndexToFileName(archive);
+            TextureFile textureFile = new TextureFile();
+            if (!textureFile.Load(Path.Combine(DaggerfallUnity.Instance.Arena2Path, classicFilename), FileUsage.UseMemory, true))
+            {
+                Debug.LogErrorFormat("Villain Variant: archive {0} not supported", archive);
+                return null;
+            }
+
+            int? usedFace = face;
+            if(!mod.HasAsset(firstFrameName))
+            {
+                // Fallback to default face
+                usedFace = null;
+            }
+
+            importedTextures.Albedo = new Texture2D[textureFile.RecordCount][];
+            for(int record = 0; record < textureFile.RecordCount; ++record)
+            {
+                var frameCount = textureFile.GetFrameCount(record);
+                importedTextures.Albedo[record] = new Texture2D[frameCount];
+
+                for(int frame = 0; frame < frameCount; ++frame)
+                {
+                    string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
+                    var frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                    if(frameAsset == null)
+                    {
+                        // Fallback on default face
+                        if (usedFace.HasValue)
+                            frameAsset = mod.GetAsset<Texture2D>(GetImageName(archive, record, frame, outfit));
+
+                        // Fallback on classic
+                        if (frameAsset == null)
+                            frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
+                    }
+
+                    importedTextures.Albedo[record][frame] = frameAsset;
+                }
+            }
+
+            textureCache[firstFrameName] = importedTextures.Albedo;
+        }
+
+        SetUv(meshFilter);
+        importedTextures.HasImportedTextures = true;
+        importedTexturesVV = true;
+
+        return material;
+    }
+
+    int SelectFace()
+    {
+        return UnityEngine.Random.Range(0, IsInHammerfell() ? RedguardFaceCount : BretonNordFaceCount) + 1;
+    }
+
+    string SelectOutfit(int archive)
+    {
+        string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
+
+        int outfitCount = 0;
+        for (; mod.HasAsset(GetImageName(archive, 0, 0, outfitPrefix + (outfitCount + 1).ToString())); ++outfitCount);
+
+        if(outfitCount == 0)
+        {
+            Debug.LogErrorFormat("Villain Variety: no outfits could be found with fallback face on archive {0}", archive);
+            return string.Empty;
+        }
+
+        int outfitIndex = UnityEngine.Random.Range(0, outfitCount) + 1;
+        return outfitPrefix + outfitIndex.ToString();
+    }
+
+    #region Copied from TextureReplacement
+    static void SetUv(MeshFilter meshFilter, float x = 0, float y = 0)
+    {
+        Vector2[] uv = new Vector2[4];
+        uv[0] = new Vector2(x, 1 - y);
+        uv[1] = new Vector2(1 - x, 1 - y);
+        uv[2] = new Vector2(x, y);
+        uv[3] = new Vector2(1 - x, y);
+        meshFilter.mesh.uv = uv;
+    }
+    #endregion
 }
