@@ -421,7 +421,7 @@ public class VillainVarietyMobileUnit : MobileUnit
             // Assign imported texture
             meshRenderer.material.mainTexture = summary.ImportedTextures.Albedo[record][currentFrame];
             if (summary.ImportedTextures.IsEmissive)
-                meshRenderer.material.SetTexture(Uniforms.EmissionMap, summary.ImportedTextures.EmissionMaps[record][currentFrame]);
+                meshRenderer.material.SetTexture("_EmissionMap", summary.ImportedTextures.EmissionMaps[record][currentFrame]);
 
             // Update UVs on mesh
             Vector2[] uvs = new Vector2[4];
