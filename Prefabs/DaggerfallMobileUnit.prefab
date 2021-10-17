@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2592428557646983539}
   - component: {fileID: 2592428557646192833}
   - component: {fileID: 2592428557645128077}
-  - component: {fileID: 7454855405336348355}
+  - component: {fileID: 218789725614948517}
   m_Layer: 0
   m_Name: DaggerfallMobileUnit
   m_TagString: Untagged
@@ -80,7 +80,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!114 &7454855405336348355
+--- !u!114 &218789725614948517
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
