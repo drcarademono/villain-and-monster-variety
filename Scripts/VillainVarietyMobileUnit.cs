@@ -25,6 +25,8 @@ namespace VillainVariety
         const int RedguardFaceCount = 5;
 
         static Dictionary<string, Texture2D[][]> textureCache = new Dictionary<string, Texture2D[][]>();
+        static Dictionary<int, int> faceCountCache = new Dictionary<int, int>();
+        static Dictionary<int, int> outfitCountCache = new Dictionary<int, int>();
 
         bool importedTexturesVV = false;
 
@@ -877,17 +879,44 @@ namespace VillainVariety
             return false;
         }
 
-        string GetImageName(int archive, int record, int frame, int face, string outfit)
+        private static bool IsClassEnemyArchive(int archive)
         {
+            return archive >= 475 && archive <= 490;
+        }
+
+        string GetImageName(int archive, int record, int frame, int face, int outfitIndex)
+        {
+            string outfit;
+            if(IsClassEnemyArchive(archive))
+            {
+                string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
+                outfit = outfitPrefix + outfitIndex.ToString();
+            }
+            else
+            {
+                outfit = outfitIndex.ToString();
+            }
+
             return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfit);
         }
 
-        string GetImageName(int archive, int record, int frame, string outfit)
+        string GetImageName(int archive, int record, int frame, int outfitIndex)
         {
+            string outfit;
+            if (IsClassEnemyArchive(archive))
+            {
+                string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
+                outfit = outfitPrefix + outfitIndex.ToString();
+            }
+            else
+            {
+                outfit = outfitIndex.ToString();
+            }
+
             return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfit);
         }
 
-        string GetImageName(int archive, int record, int frame, int? face, string outfit)
+        string GetImageName(int archive, int record, int frame, int? face, int outfit)
         {
             if (face.HasValue)
             {
@@ -901,8 +930,13 @@ namespace VillainVariety
 
         Material LoadVillainVariant(int archive, MeshFilter meshFilter, ref MobileBillboardImportedTextures importedTextures)
         {
-            int face = SelectFace();
-            string outfit = SelectOutfit(archive);
+            int face = SelectFace(archive);
+            if (face == 0)
+                return null;
+
+            int outfit = SelectOutfit(archive);
+            if (outfit == 0)
+                return null;
 
             Material material = MaterialReader.CreateBillboardMaterial();
 
@@ -933,16 +967,25 @@ namespace VillainVariety
                     for (int frame = 0; frame < frameCount; ++frame)
                     {
                         string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
-                        var frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+
+                        Texture2D frameAsset = null;
+                        if (mod.HasAsset(frameFilename))
+                        {
+                            frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                        }
+
+                        // Fallback on default face, if we haven't tried that one already
+                        if (frameAsset == null && usedFace.HasValue)
+                        {   
+                            frameFilename = GetImageName(archive, record, frame, outfit);
+                            if(mod.HasAsset(frameFilename))
+                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                        }
+
+                        // Fallback on classic
                         if (frameAsset == null)
                         {
-                            // Fallback on default face
-                            if (usedFace.HasValue)
-                                frameAsset = mod.GetAsset<Texture2D>(GetImageName(archive, record, frame, outfit));
-
-                            // Fallback on classic
-                            if (frameAsset == null)
-                                frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
+                            frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
                         }
 
                         importedTextures.Albedo[record][frame] = frameAsset;
@@ -959,26 +1002,52 @@ namespace VillainVariety
             return material;
         }
 
-        int SelectFace()
+        int GetFaceCount(int archive)
         {
-            return UnityEngine.Random.Range(0, IsInHammerfell() ? RedguardFaceCount : BretonNordFaceCount) + 1;
+            if (faceCountCache.TryGetValue(archive, out int count))
+                return count;
+
+            count = 0;
+
+            // Faces and outfits are 1-indexed
+            for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++);
+
+            faceCountCache.Add(archive, count);
+            return count;
         }
 
-        string SelectOutfit(int archive)
+        int SelectFace(int archive)
         {
-            string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
+            int faceCount = GetFaceCount(archive);
+            if (faceCount == 0)
+                return 0;
 
-            int outfitCount = 0;
-            for (; mod.HasAsset(GetImageName(archive, 0, 0, outfitPrefix + (outfitCount + 1).ToString())); ++outfitCount) ;
+            return UnityEngine.Random.Range(0, faceCount) + 1;
+        }
+
+        int GetOutfitCount(int archive)
+        {
+            if (outfitCountCache.TryGetValue(archive, out int count))
+                return count;
+
+            count = 0;
+
+            // Faces and outfits are 1-indexed
+            for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+
+            outfitCountCache.Add(archive, count);
+            return count;
+        }
+
+
+        int SelectOutfit(int archive)
+        {
+            int outfitCount = GetOutfitCount(archive);
 
             if (outfitCount == 0)
-            {
-                Debug.LogErrorFormat("Villain Variety: no outfits could be found with fallback face on archive {0}", archive);
-                return string.Empty;
-            }
+                return 0;
 
-            int outfitIndex = UnityEngine.Random.Range(0, outfitCount) + 1;
-            return outfitPrefix + outfitIndex.ToString();
+            return UnityEngine.Random.Range(0, outfitCount) + 1;
         }
 
         #region Copied from TextureReplacement
