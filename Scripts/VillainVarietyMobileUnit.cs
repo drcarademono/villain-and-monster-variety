@@ -22,8 +22,9 @@ namespace VillainVariety
         const string ModGuid = "d31aac70-5828-46e2-a9c4-19f32180813c";
 
         static Dictionary<string, Texture2D[][]> textureCache = new Dictionary<string, Texture2D[][]>();
-        static Dictionary<int, int> faceCountCache = new Dictionary<int, int>();
-        static Dictionary<int, int> outfitCountCache = new Dictionary<int, int>();
+        static Dictionary<string, int> faceCountCache = new Dictionary<string, int>();
+        static Dictionary<string, int> outfitCountCache = new Dictionary<string, int>();
+        static Dictionary<int, bool> regionalArchivesCache = new Dictionary<int, bool>();
 
         static Mod _mod;
         static Mod mod
@@ -874,41 +875,43 @@ namespace VillainVariety
             return false;
         }
 
-        private static bool IsClassEnemyArchive(int archive)
+        string GetRegionPrefix()
         {
-            return archive >= 475 && archive <= 490;
+            return IsInHammerfell() ? "RG" : "BN";
+        }
+
+        string GetRegionalImageName(int archive, int record, int frame, int face, int outfitIndex)
+        {
+            string outfit = GetRegionPrefix() + outfitIndex.ToString();
+            return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfit);
         }
 
         string GetImageName(int archive, int record, int frame, int face, int outfitIndex)
         {
-            string outfit;
-            if(IsClassEnemyArchive(archive))
-            {
-                string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
-                outfit = outfitPrefix + outfitIndex.ToString();
-            }
-            else
-            {
-                outfit = outfitIndex.ToString();
-            }
+            return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfitIndex);
+        }
 
-            return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfit);
+        string GetRegionalImageName(int archive, int record, int frame, int outfitIndex)
+        {
+            string outfit = GetRegionPrefix() + outfitIndex.ToString();
+            return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfit);
         }
 
         string GetImageName(int archive, int record, int frame, int outfitIndex)
         {
-            string outfit;
-            if (IsClassEnemyArchive(archive))
+            return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfitIndex);
+        }
+
+        string GetRegionalImageName(int archive, int record, int frame, int? face, int outfit)
+        {
+            if (face.HasValue)
             {
-                string outfitPrefix = IsInHammerfell() ? "RG" : "BN";
-                outfit = outfitPrefix + outfitIndex.ToString();
+                return GetRegionalImageName(archive, record, frame, face.Value, outfit);
             }
             else
             {
-                outfit = outfitIndex.ToString();
+                return GetRegionalImageName(archive, record, frame, outfit);
             }
-
-            return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfit);
         }
 
         string GetImageName(int archive, int record, int frame, int? face, int outfit)
@@ -923,6 +926,16 @@ namespace VillainVariety
             }
         }
 
+        bool IsRegional(int archive)
+        {
+            if (!regionalArchivesCache.TryGetValue(archive, out bool regional))
+            {
+                regional = mod.HasAsset(GetRegionalImageName(archive, 0, 0, 1, 1));
+                regionalArchivesCache.Add(archive, regional);
+            }
+            return regional;
+        }
+
         Material LoadVillainVariant(int archive, MeshFilter meshFilter, ref MobileBillboardImportedTextures importedTextures)
         {
             int face = SelectFace(archive);
@@ -933,9 +946,9 @@ namespace VillainVariety
             if (outfit == 0)
                 return null;
 
-            Material material = MaterialReader.CreateBillboardMaterial();
+            bool regional = IsRegional(archive);
+            string firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, face, outfit) : GetImageName(archive, 0, 0, face, outfit);
 
-            string firstFrameName = GetImageName(archive, 0, 0, face, outfit);
             if (!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
             {
                 string classicFilename = TextureFile.IndexToFileName(archive);
@@ -961,18 +974,41 @@ namespace VillainVariety
 
                     for (int frame = 0; frame < frameCount; ++frame)
                     {
-                        string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
-
                         Texture2D frameAsset = null;
-                        if (mod.HasAsset(frameFilename))
+
+                        if (regional)
                         {
-                            frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                            string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
+                            if (mod.HasAsset(frameFilename))
+                            {
+                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                            }
+
+                            // Try regional default face
+                            if(frameAsset == null && usedFace.HasValue)
+                            {
+                                frameFilename = GetRegionalImageName(archive, record, frame, outfit);
+                                if (mod.HasAsset(frameFilename))
+                                {
+                                    frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                                }
+                            }
+                        }
+
+                        // If not regional or regional was missing
+                        if (frameAsset == null)
+                        {
+                            string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
+                            if (mod.HasAsset(frameFilename))
+                            {
+                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                            }
                         }
 
                         // Fallback on default face, if we haven't tried that one already
                         if (frameAsset == null && usedFace.HasValue)
                         {   
-                            frameFilename = GetImageName(archive, record, frame, outfit);
+                            string frameFilename = GetImageName(archive, record, frame, outfit);
                             if(mod.HasAsset(frameFilename))
                                 frameAsset = mod.GetAsset<Texture2D>(frameFilename);
                         }
@@ -993,20 +1029,29 @@ namespace VillainVariety
             SetUv(meshFilter);
             importedTextures.HasImportedTextures = true;
 
-            return material;
+            return MaterialReader.CreateBillboardMaterial();
         }
 
         int GetFaceCount(int archive)
         {
-            if (faceCountCache.TryGetValue(archive, out int count))
+            bool regional = IsRegional(archive);
+            string archiveKey = regional ? GetRegionPrefix() + archive.ToString() : archive.ToString();
+            if (faceCountCache.TryGetValue(archiveKey, out int count))
                 return count;
 
             count = 0;
 
             // Faces and outfits are 1-indexed
-            for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++);
+            if (regional)
+            {
+                for (; mod.HasAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++) ;
+            }
+            else
+            {
+                for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++) ;
+            }
 
-            faceCountCache.Add(archive, count);
+            faceCountCache.Add(archiveKey, count);
             return count;
         }
 
@@ -1021,18 +1066,27 @@ namespace VillainVariety
 
         int GetOutfitCount(int archive)
         {
-            if (outfitCountCache.TryGetValue(archive, out int count))
+            bool regional = IsRegional(archive);
+            string archiveKey = regional ? GetRegionPrefix() + archive.ToString() : archive.ToString();
+
+            if (outfitCountCache.TryGetValue(archiveKey, out int count))
                 return count;
 
             count = 0;
 
-            // Faces and outfits are 1-indexed
-            for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+            if (regional)
+            {
+                for (; mod.HasAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+            }
+            else
+            {
+                // Faces and outfits are 1-indexed
+                for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+            }
 
-            outfitCountCache.Add(archive, count);
+            outfitCountCache.Add(archiveKey, count);
             return count;
         }
-
 
         int SelectOutfit(int archive)
         {
