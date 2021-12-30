@@ -21,14 +21,9 @@ namespace VillainVariety
     {
         const string ModGuid = "d31aac70-5828-46e2-a9c4-19f32180813c";
 
-        const int BretonNordFaceCount = 10;
-        const int RedguardFaceCount = 5;
-
         static Dictionary<string, Texture2D[][]> textureCache = new Dictionary<string, Texture2D[][]>();
         static Dictionary<int, int> faceCountCache = new Dictionary<int, int>();
         static Dictionary<int, int> outfitCountCache = new Dictionary<int, int>();
-
-        bool importedTexturesVV = false;
 
         static Mod _mod;
         static Mod mod
@@ -997,7 +992,6 @@ namespace VillainVariety
 
             SetUv(meshFilter);
             importedTextures.HasImportedTextures = true;
-            importedTexturesVV = true;
 
             return material;
         }
