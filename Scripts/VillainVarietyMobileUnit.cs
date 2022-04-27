@@ -18,23 +18,10 @@ namespace VillainVariety
     [ImportedComponent]
     public class VillainVarietyMobileUnit : MobileUnit
     {
-        const string ModGuid = "d31aac70-5828-46e2-a9c4-19f32180813c";
-
         static Dictionary<string, Texture2D[][]> textureCache = new Dictionary<string, Texture2D[][]>();
         static Dictionary<string, int> faceCountCache = new Dictionary<string, int>();
         static Dictionary<string, int> outfitCountCache = new Dictionary<string, int>();
         static Dictionary<int, bool> regionalArchivesCache = new Dictionary<int, bool>();
-
-        static Mod _mod;
-        static Mod mod
-        {
-            get
-            {
-                if (_mod == null)
-                    _mod = ModManager.Instance.GetModFromGUID(ModGuid);
-                return _mod;
-            }
-        }
 
         #region Original Code
         const int numberOrientations = 8;
@@ -903,7 +890,7 @@ namespace VillainVariety
         {
             if (!regionalArchivesCache.TryGetValue(archive, out bool regional))
             {
-                regional = mod.HasAsset(GetRegionalImageName(archive, 0, 0, 1, 1));
+                regional = ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, 0, 0, 1, 1), clone: false, out Texture2D _);
                 regionalArchivesCache.Add(archive, regional);
             }
             return regional;
@@ -933,7 +920,7 @@ namespace VillainVariety
                 }
 
                 int? usedFace = face;
-                if (!mod.HasAsset(firstFrameName))
+                if (!ModManager.Instance.TryGetAsset(firstFrameName, clone:false, out Texture2D _))
                 {
                     // Fallback to default face
                     usedFace = null;
@@ -952,19 +939,13 @@ namespace VillainVariety
                         if (regional)
                         {
                             string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
-                            if (mod.HasAsset(frameFilename))
-                            {
-                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
-                            }
+                            ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
 
                             // Try regional default face
                             if(frameAsset == null && usedFace.HasValue)
                             {
                                 frameFilename = GetRegionalImageName(archive, record, frame, outfit);
-                                if (mod.HasAsset(frameFilename))
-                                {
-                                    frameAsset = mod.GetAsset<Texture2D>(frameFilename);
-                                }
+                                ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                             }
                         }
 
@@ -972,18 +953,14 @@ namespace VillainVariety
                         if (frameAsset == null)
                         {
                             string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
-                            if (mod.HasAsset(frameFilename))
-                            {
-                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
-                            }
+                            ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                         }
 
                         // Fallback on default face, if we haven't tried that one already
                         if (frameAsset == null && usedFace.HasValue)
                         {   
                             string frameFilename = GetImageName(archive, record, frame, outfit);
-                            if(mod.HasAsset(frameFilename))
-                                frameAsset = mod.GetAsset<Texture2D>(frameFilename);
+                            ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                         }
 
                         // Fallback on classic
@@ -1017,11 +994,11 @@ namespace VillainVariety
             // Faces and outfits are 1-indexed
             if (regional)
             {
-                for (; mod.HasAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
             }
             else
             {
-                for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1)); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
             }
 
             faceCountCache.Add(archiveKey, count);
@@ -1049,12 +1026,12 @@ namespace VillainVariety
 
             if (regional)
             {
-                for (; mod.HasAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
             }
             else
             {
                 // Faces and outfits are 1-indexed
-                for (; mod.HasAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1)); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
             }
 
             outfitCountCache.Add(archiveKey, count);
