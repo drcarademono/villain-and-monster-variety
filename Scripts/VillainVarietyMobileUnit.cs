@@ -896,8 +896,69 @@ namespace VillainVariety
             return regional;
         }
 
+        const string villagerVarietyMod = "Vanilla Enhanced - Villagers";
+        const string villagerVarietyGetArchivePrexix = "getArchivePrefix";
+
+        Material LoadGuardVariant(int archive, MeshFilter meshfilter, ref MobileBillboardImportedTextures importedTextures)
+        {
+            Mod mod = ModManager.Instance.GetMod(villagerVarietyMod);
+            if (mod == null || !mod.Enabled)
+                return null;
+
+            string prefix = null;
+            ModManager.Instance.SendModMessage(villagerVarietyMod, villagerVarietyGetArchivePrexix, archive,
+                (_, data) =>
+            {
+                prefix = data as string;
+            });
+
+            if (string.IsNullOrEmpty(prefix))
+                return null;
+
+            string firstFrameName = $"{prefix}0-0";
+
+            if (!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
+            {
+                string classicFilename = TextureFile.IndexToFileName(archive);
+                TextureFile textureFile = new TextureFile();
+                if (!textureFile.Load(Path.Combine(DaggerfallUnity.Instance.Arena2Path, classicFilename), FileUsage.UseMemory, true))
+                {
+                    Debug.LogErrorFormat("Villain Variant: archive {0} not supported", archive);
+                    return null;
+                }
+
+                importedTextures.Albedo = new Texture2D[textureFile.RecordCount][];
+                for (int record = 0; record < textureFile.RecordCount; ++record)
+                {
+                    var frameCount = textureFile.GetFrameCount(record);
+                    importedTextures.Albedo[record] = new Texture2D[frameCount];
+
+                    for (int frame = 0; frame < frameCount; ++frame)
+                    {
+                        Texture2D frameAsset;
+                        string frameFilename = $"{prefix}{record}-{frame}";
+                        if(!ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset))
+                        {
+                            frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
+                        }
+                        importedTextures.Albedo[record][frame] = frameAsset;
+                    }
+                }
+
+                textureCache[firstFrameName] = importedTextures.Albedo;
+            }
+
+            SetUv(meshFilter);
+            importedTextures.HasImportedTextures = true;
+
+            return MaterialReader.CreateBillboardMaterial();
+        }
+
         Material LoadVillainVariant(int archive, MeshFilter meshFilter, ref MobileBillboardImportedTextures importedTextures)
         {
+            if (archive == 399)
+                return LoadGuardVariant(archive, meshFilter, ref importedTextures);
+
             int face = SelectFace(archive);
             if (face == 0)
                 return null;
@@ -940,7 +1001,7 @@ namespace VillainVariety
                         {
                             string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
                             ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
-
+                            
                             // Try regional default face
                             if(frameAsset == null && usedFace.HasValue)
                             {
