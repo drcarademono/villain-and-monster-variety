@@ -972,66 +972,107 @@ namespace VillainVariety
 
             if (!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
             {
-                string classicFilename = TextureFile.IndexToFileName(archive);
-                TextureFile textureFile = new TextureFile();
-                if (!textureFile.Load(Path.Combine(DaggerfallUnity.Instance.Arena2Path, classicFilename), FileUsage.UseMemory, true))
-                {
-                    Debug.LogErrorFormat("Villain Variant: archive {0} not supported", archive);
-                    return null;
-                }
-
                 int? usedFace = face;
-                if (!ModManager.Instance.TryGetAsset(firstFrameName, clone:false, out Texture2D _))
+                if (!ModManager.Instance.TryGetAsset(firstFrameName, clone: false, out Texture2D _))
                 {
                     // Fallback to default face
                     usedFace = null;
                 }
-
-                importedTextures.Albedo = new Texture2D[textureFile.RecordCount][];
-                for (int record = 0; record < textureFile.RecordCount; ++record)
+                                
+                Texture2D LoadFrame(int record, int frame)
                 {
-                    var frameCount = textureFile.GetFrameCount(record);
-                    importedTextures.Albedo[record] = new Texture2D[frameCount];
+                    Texture2D frameAsset = null;
 
-                    for (int frame = 0; frame < frameCount; ++frame)
+                    if (regional)
                     {
-                        Texture2D frameAsset = null;
+                        string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
+                        ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
 
-                        if (regional)
-                        {
-                            string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
-                            ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
-                            
-                            // Try regional default face
-                            if(frameAsset == null && usedFace.HasValue)
-                            {
-                                frameFilename = GetRegionalImageName(archive, record, frame, outfit);
-                                ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
-                            }
-                        }
-
-                        // If not regional or regional was missing
-                        if (frameAsset == null)
-                        {
-                            string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
-                            ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
-                        }
-
-                        // Fallback on default face, if we haven't tried that one already
+                        // Try regional default face
                         if (frameAsset == null && usedFace.HasValue)
-                        {   
-                            string frameFilename = GetImageName(archive, record, frame, outfit);
+                        {
+                            frameFilename = GetRegionalImageName(archive, record, frame, outfit);
                             ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                         }
+                    }
 
-                        // Fallback on classic
-                        if (frameAsset == null)
+                    // If not regional or regional was missing
+                    if (frameAsset == null)
+                    {
+                        string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
+                        ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
+                    }
+
+                    // Fallback on default face, if we haven't tried that one already
+                    if (frameAsset == null && usedFace.HasValue)
+                    {
+                        string frameFilename = GetImageName(archive, record, frame, outfit);
+                        ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
+                    }
+
+                    return frameAsset;
+                }
+
+                // Check if classic archive
+                string classicFilename = TextureFile.IndexToFileName(archive);
+                TextureFile textureFile = new TextureFile();
+                if (textureFile.Load(Path.Combine(DaggerfallUnity.Instance.Arena2Path, classicFilename), FileUsage.UseMemory, true))
+                {
+                    importedTextures.Albedo = new Texture2D[textureFile.RecordCount][];
+                    for (int record = 0; record < textureFile.RecordCount; ++record)
+                    {
+                        var frameCount = textureFile.GetFrameCount(record);
+                        importedTextures.Albedo[record] = new Texture2D[frameCount];
+
+                        for (int frame = 0; frame < frameCount; ++frame)
                         {
-                            frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
+                            Texture2D frameAsset = LoadFrame(record, frame);
+
+                            // Fallback on classic
+                            if (frameAsset == null)
+                            {
+                                frameAsset = ImageReader.GetTexture(classicFilename, record, frame, hasAlpha: true);
+                            }
+
+                            importedTextures.Albedo[record][frame] = frameAsset;
+                        }
+                    }
+                }
+                else
+                {
+                    List<Texture2D[]> allAlbedo = new List<Texture2D[]>();
+
+                    bool TryImportTexture(int record, out Texture2D[] frames)
+                    {
+                        int frame = 0;
+                        Texture2D tex;
+
+                        var textures = new List<Texture2D>();
+
+                        while (tex = LoadFrame(record, frame))
+                        {
+                            textures.Add(tex);
+                            frame++;
                         }
 
-                        importedTextures.Albedo[record][frame] = frameAsset;
+                        frames = textures.ToArray();
+                        return textures.Count > 0;
                     }
+
+                    int currentRecord = 0;
+                    while(TryImportTexture(currentRecord, out Texture2D[] frames))
+                    {
+                        allAlbedo.Add(frames);
+                        currentRecord++;
+                    }
+
+                    if(currentRecord == 0)
+                    {
+                        Debug.LogError($"Villain Variety: couldn't load archive {archive}");
+                        return null;
+                    }
+
+                    importedTextures.Albedo = allAlbedo.ToArray();
                 }
 
                 textureCache[firstFrameName] = importedTextures.Albedo;
