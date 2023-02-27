@@ -12,6 +12,8 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using DaggerfallWorkshop.Game.Utility.ModSupport;
+using DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings;
+using static UnityEditor.AddressableAssets.Build.BuildPipelineTasks.GenerateLocationListsTask;
 
 namespace VillainVariety
 {
@@ -22,6 +24,9 @@ namespace VillainVariety
         static Dictionary<string, int> faceCountCache = new Dictionary<string, int>();
         static Dictionary<string, int> outfitCountCache = new Dictionary<string, int>();
         static Dictionary<int, bool> regionalArchivesCache = new Dictionary<int, bool>();
+
+        static Mod mod;
+        static bool enemyFaces;
 
         #region Original Code
         const int numberOrientations = 8;
@@ -812,6 +817,21 @@ namespace VillainVariety
 #endif
         #endregion
 
+        [Invoke(StateManager.StateTypes.Start, 0)]
+        public static void Init(InitParams initParams)
+        {
+            mod = initParams.Mod;
+
+            mod.LoadSettingsCallback = LoadSettings;
+            mod.LoadSettings();
+            mod.IsReady = true;
+        }
+
+        static void LoadSettings(ModSettings modSettings, ModSettingsChange change)
+        {
+            enemyFaces = modSettings.GetBool("Core", "EnemyFaces");
+        }
+
         private static bool IsInHammerfell()
         {
             var GPS = GameManager.Instance.PlayerGPS;
@@ -959,21 +979,29 @@ namespace VillainVariety
             if (archive == 399)
                 return LoadGuardVariant(archive, meshFilter, ref importedTextures);
 
-            int face = SelectFace(archive);
-            if (face == 0)
-                return null;
-
+            int face = enemyFaces ? SelectFace(archive) : 0;
+            
             int outfit = SelectOutfit(archive);
             if (outfit == 0)
                 return null;
 
             bool regional = IsRegional(archive);
-            string firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, face, outfit) : GetImageName(archive, 0, 0, face, outfit);
+            string firstFrameName;
+            int? usedFace;
+            if (face != 0)
+            {
+                usedFace = face;
+                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, face, outfit) : GetImageName(archive, 0, 0, face, outfit);
+            }
+            else
+            {
+                usedFace = null;
+                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, outfit) : GetImageName(archive, 0, 0, outfit);
+            }
 
             if (!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
-            {
-                int? usedFace = face;
-                if (!ModManager.Instance.TryGetAsset(firstFrameName, clone: false, out Texture2D _))
+            {                
+                if (usedFace.HasValue && !ModManager.Instance.TryGetAsset(firstFrameName, clone: false, out Texture2D _))
                 {
                     // Fallback to default face
                     usedFace = null;

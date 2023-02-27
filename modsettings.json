@@ -1,0 +1,20 @@
+{
+    "Version": "1",
+    "Sections": [
+        {
+            "Name": "Core",
+            "Description": "Main settings",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Value": true,
+                    "Name": "EnemyFaces",
+                    "Description": "Whether enemies have custom faces",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                }
+            ],
+            "$version": "v1"
+        }
+    ]
+}
