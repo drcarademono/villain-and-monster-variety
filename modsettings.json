@@ -15,6 +15,28 @@
                 }
             ],
             "$version": "v1"
+        },
+        {
+            "Name": "Compatibility",
+            "Description": "Compatibility with other mods",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Value": false,
+                    "Name": "ForceNoNudity",
+                    "Description": "Forces Ninelan's No Nudity sprites, even if the mod is not used",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": false,
+                    "Name": "ForceHelmetSwap",
+                    "Description": "Forces Helmet Swap sprites, even if the mod is not used",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                }
+            ],
+            "$version": "v1"
         }
     ]
 }
