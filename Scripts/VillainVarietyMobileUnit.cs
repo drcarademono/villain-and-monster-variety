@@ -26,7 +26,11 @@ namespace VillainVariety
 
         static Mod mod;
         static bool enemyFaces;
+        static bool forceNoNudity;
+        static bool forceHelmetSwap;
 
+        static bool usingNinelanNoNudity;
+        static bool usingHelmetSwap;
         #region Original Code
         const int numberOrientations = 8;
         const float anglePerOrientation = 360f / numberOrientations;
@@ -829,6 +833,20 @@ namespace VillainVariety
         static void LoadSettings(ModSettings modSettings, ModSettingsChange change)
         {
             enemyFaces = modSettings.GetBool("Core", "EnemyFaces");
+            forceNoNudity = modSettings.GetBool("Compatibility", "ForceNoNudity");
+            forceHelmetSwap = modSettings.GetBool("Compatibility", "ForceHelmetSwap");
+        }
+
+        static bool HasHelmetSwap()
+        {
+            Mod helmetSwap = ModManager.Instance.GetMod("Helmet Swap");
+            return helmetSwap != null && helmetSwap.Enabled;
+        }
+
+        static bool HasNoNudity()
+        {
+            Mod noNudity = ModManager.Instance.GetMod("No nudity");
+            return noNudity != null && noNudity.Enabled;
         }
 
         private static bool IsInHammerfell()
@@ -854,62 +872,123 @@ namespace VillainVariety
             return false;
         }
 
+        string GetSettingPrefix(int archive)
+        {
+            switch(archive)
+            {
+                case 265: // Nymph
+                case 284: // Seducer
+                case 297: // Lamia
+                    if (forceNoNudity || HasNoNudity())
+                        return ".NN";
+                    break;
+
+                case 478: // Hammer Knight Male
+                case 481: // Light Fighter Female 
+                case 482: // Light Fighter Male
+                case 487: // Axe Knight Female
+                    if (forceHelmetSwap || HasHelmetSwap())
+                        return ".HS";
+                    break;
+            }
+
+            return "";
+        }
+
         string GetRegionPrefix()
         {
             return IsInHammerfell() ? "RG" : "BN";
         }
 
-        string GetRegionalImageName(int archive, int record, int frame, int face, int outfitIndex)
+        string GetRegionalImageName(int archive, int record, int frame, int face, string setting, int outfitIndex)
         {
-            string outfit = GetRegionPrefix() + outfitIndex.ToString();
-            return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfit);
-        }
-
-        string GetImageName(int archive, int record, int frame, int face, int outfitIndex)
-        {
-            return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, outfitIndex);
-        }
-
-        string GetRegionalImageName(int archive, int record, int frame, int outfitIndex)
-        {
-            string outfit = GetRegionPrefix() + outfitIndex.ToString();
-            return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfit);
-        }
-
-        string GetImageName(int archive, int record, int frame, int outfitIndex)
-        {
-            return string.Format("{0:000}.X.{3}_{1}-{2}", archive, record, frame, outfitIndex);
-        }
-
-        string GetRegionalImageName(int archive, int record, int frame, int? face, int outfit)
-        {
-            if (face.HasValue)
+            if (outfitIndex == 0)
             {
-                return GetRegionalImageName(archive, record, frame, face.Value, outfit);
+                return GetRegionalImageName(archive, record, frame, face, setting, "");
             }
             else
             {
-                return GetRegionalImageName(archive, record, frame, outfit);
+                string outfit = "." + GetRegionPrefix() + outfitIndex.ToString();
+                return GetRegionalImageName(archive, record, frame, face, setting, outfit);
             }
         }
 
-        string GetImageName(int archive, int record, int frame, int? face, int outfit)
+        string GetRegionalImageName(int archive, int record, int frame, int face, string setting, string outfit)
         {
-            if (face.HasValue)
+            return string.Format("{0:000}.{3}{4}{5}_{1}-{2}", archive, record, frame, face, setting, outfit);
+        }
+
+        string GetImageName(int archive, int record, int frame, int face, string setting, int outfitIndex)
+        {
+            if(outfitIndex == 0)
             {
-                return GetImageName(archive, record, frame, face.Value, outfit);
+                return string.Format("{0:000}.{3}.{4}_{1}-{2}", archive, record, frame, face, setting);
             }
             else
             {
-                return GetImageName(archive, record, frame, outfit);
+                return string.Format("{0:000}.{3}{4}.{5}_{1}-{2}", archive, record, frame, face, setting, outfitIndex);
             }
         }
 
-        bool IsRegional(int archive)
+        string GetRegionalImageName(int archive, int record, int frame, string setting, int outfitIndex)
+        {
+            if (outfitIndex == 0)
+            {
+                return GetRegionalImageName(archive, record, frame, setting, "");
+            }
+            else
+            {
+                string outfit = "." + GetRegionPrefix() + outfitIndex.ToString();
+                return GetRegionalImageName(archive, record, frame, setting, outfit);
+            }
+        }
+
+        string GetRegionalImageName(int archive, int record, int frame, string setting, string outfit)
+        {
+            return string.Format("{0:000}.X{3}{4}_{1}-{2}", archive, record, frame, setting, outfit);
+        }
+
+        string GetImageName(int archive, int record, int frame, string setting, int outfitIndex)
+        {
+            if (outfitIndex == 0)
+            {
+                return string.Format("{0:000}.X{3}_{1}-{2}", archive, record, frame, setting);
+            }
+            else
+            {
+                return string.Format("{0:000}.X{3}.{4}_{1}-{2}", archive, record, frame, setting, outfitIndex);
+            }
+        }
+
+        string GetRegionalImageName(int archive, int record, int frame, int? face, string setting, int outfitIndex)
+        {
+            if (face.HasValue)
+            {
+                return GetRegionalImageName(archive, record, frame, face.Value, setting, outfitIndex);
+            }
+            else
+            {
+                return GetRegionalImageName(archive, record, frame, setting, outfitIndex);
+            }
+        }
+
+        string GetImageName(int archive, int record, int frame, int? face, string setting, int outfitIndex)
+        {
+            if (face.HasValue)
+            {
+                return GetImageName(archive, record, frame, face.Value, setting, outfitIndex);
+            }
+            else
+            {
+                return GetImageName(archive, record, frame, setting, outfitIndex);
+            }
+        }
+
+        bool IsRegional(int archive, string setting)
         {
             if (!regionalArchivesCache.TryGetValue(archive, out bool regional))
             {
-                regional = ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, 0, 0, 1, 1), clone: false, out Texture2D _);
+                regional = ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, 0, 0, 1, setting, 1), clone: false, out Texture2D _);
                 regionalArchivesCache.Add(archive, regional);
             }
             return regional;
@@ -978,24 +1057,26 @@ namespace VillainVariety
             if (archive == 399)
                 return LoadGuardVariant(archive, meshFilter, ref importedTextures);
 
-            int face = enemyFaces ? SelectFace(archive) : 0;
-            
-            int outfit = SelectOutfit(archive);
-            if (outfit == 0)
+            string setting = GetSettingPrefix(archive);
+            int face = enemyFaces ? SelectFace(archive, setting) : 0;
+            int outfit = SelectOutfit(archive, setting);
+
+            // If we have no V&MV feature at all, return the default
+            if (face == 0 && outfit == 0 && string.IsNullOrEmpty(setting))
                 return null;
 
-            bool regional = IsRegional(archive);
+            bool regional = IsRegional(archive, setting);
             string firstFrameName;
             int? usedFace;
             if (face != 0)
             {
                 usedFace = face;
-                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, face, outfit) : GetImageName(archive, 0, 0, face, outfit);
+                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, face, setting, outfit) : GetImageName(archive, 0, 0, face, setting, outfit);
             }
             else
             {
                 usedFace = null;
-                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, outfit) : GetImageName(archive, 0, 0, outfit);
+                firstFrameName = regional ? GetRegionalImageName(archive, 0, 0, setting, outfit) : GetImageName(archive, 0, 0, setting, outfit);
             }
 
             if (!textureCache.TryGetValue(firstFrameName, out importedTextures.Albedo))
@@ -1012,13 +1093,13 @@ namespace VillainVariety
 
                     if (regional)
                     {
-                        string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, outfit);
+                        string frameFilename = GetRegionalImageName(archive, record, frame, usedFace, setting, outfit);
                         ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
 
                         // Try regional default face
                         if (frameAsset == null && usedFace.HasValue)
                         {
-                            frameFilename = GetRegionalImageName(archive, record, frame, outfit);
+                            frameFilename = GetRegionalImageName(archive, record, frame, setting, outfit);
                             ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                         }
                     }
@@ -1026,14 +1107,14 @@ namespace VillainVariety
                     // If not regional or regional was missing
                     if (frameAsset == null)
                     {
-                        string frameFilename = GetImageName(archive, record, frame, usedFace, outfit);
+                        string frameFilename = GetImageName(archive, record, frame, usedFace, setting, outfit);
                         ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                     }
 
                     // Fallback on default face, if we haven't tried that one already
                     if (frameAsset == null && usedFace.HasValue)
                     {
-                        string frameFilename = GetImageName(archive, record, frame, outfit);
+                        string frameFilename = GetImageName(archive, record, frame, setting, outfit);
                         ModManager.Instance.TryGetAsset(frameFilename, clone: false, out frameAsset);
                     }
 
@@ -1111,9 +1192,9 @@ namespace VillainVariety
             return MaterialReader.CreateBillboardMaterial();
         }
 
-        int GetFaceCount(int archive)
+        int GetFaceCount(int archive, string setting)
         {
-            bool regional = IsRegional(archive);
+            bool regional = IsRegional(archive, setting);
             string archiveKey = regional ? GetRegionPrefix() + archive.ToString() : archive.ToString();
             if (faceCountCache.TryGetValue(archiveKey, out int count))
                 return count;
@@ -1123,29 +1204,29 @@ namespace VillainVariety
             // Faces and outfits are 1-indexed
             if (regional)
             {
-                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: count + 1, setting, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
             }
             else
             {
-                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: count + 1, setting, outfitIndex: 1), clone: false, out Texture2D _); count++) ;
             }
 
             faceCountCache.Add(archiveKey, count);
             return count;
         }
 
-        int SelectFace(int archive)
+        int SelectFace(int archive, string setting)
         {
-            int faceCount = GetFaceCount(archive);
+            int faceCount = GetFaceCount(archive, setting);
             if (faceCount == 0)
                 return 0;
 
             return UnityEngine.Random.Range(0, faceCount) + 1;
         }
 
-        int GetOutfitCount(int archive)
+        int GetOutfitCount(int archive, string setting)
         {
-            bool regional = IsRegional(archive);
+            bool regional = IsRegional(archive, setting);
             string archiveKey = regional ? GetRegionPrefix() + archive.ToString() : archive.ToString();
 
             if (outfitCountCache.TryGetValue(archiveKey, out int count))
@@ -1155,21 +1236,21 @@ namespace VillainVariety
 
             if (regional)
             {
-                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetRegionalImageName(archive, record: 0, frame: 0, face: 1, setting, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
             }
             else
             {
                 // Faces and outfits are 1-indexed
-                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: 1, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
+                for (; ModManager.Instance.TryGetAsset(GetImageName(archive, record: 0, frame: 0, face: 1, setting, outfitIndex: count + 1), clone: false, out Texture2D _); count++) ;
             }
 
-            outfitCountCache.Add(archiveKey, count);
+             outfitCountCache.Add(archiveKey, count);
             return count;
         }
 
-        int SelectOutfit(int archive)
+        int SelectOutfit(int archive, string setting)
         {
-            int outfitCount = GetOutfitCount(archive);
+            int outfitCount = GetOutfitCount(archive, setting);
 
             if (outfitCount == 0)
                 return 0;
