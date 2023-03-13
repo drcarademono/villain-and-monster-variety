@@ -31,7 +31,7 @@
                 {
                     "Value": false,
                     "Name": "ForceHelmetSwap",
-                    "Description": "Forces Helmet Swap sprites, even if the mod is not used",
+                    "Description": "Forces Ralzar's Helmet Swap sprites, even if the mod is not used",
                     "$version": "v1",
                     "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
                 }
