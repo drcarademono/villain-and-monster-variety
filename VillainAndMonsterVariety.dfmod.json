@@ -16476,6 +16476,11 @@
             "Name": "daggerfall enemy expansion",
             "IsOptional": true,
             "IsPeer": false
+        },
+        {
+            "Name": "no nudity",
+            "IsOptional": true,
+            "IsPeer": false
         }
     ]
 }
