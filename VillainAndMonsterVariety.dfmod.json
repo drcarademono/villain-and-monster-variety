@@ -2,7 +2,7 @@
     "ModTitle": "Vanilla Enhanced - Villains & Monsters",
     "ModVersion": "3.2.3",
     "ModAuthor": "carademono, Kab, Ninelan, Kamer",
-    "ContactInfo": "forums.dfworkshop.net",
+    "ContactInfo": "Lysandus' Tomb Discord server",
     "DFUnity_Version": "1.0.0",
     "ModDescription": "Better sprites and options for the adventurers, bandits, and monsters of the Iliac Bay",
     "GUID": "d31aac70-5828-46e2-a9c4-19f32180813c",
@@ -17516,7 +17516,8 @@
         "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/MORROWIND - DwarvenSteam/1640_14-0.xml",
         "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/MORROWIND - DwarvenSteam/1640_9-0.xml",
         "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/MORROWIND - DwarvenSteam/1640_5-0.xml",
-        "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/MORROWIND - DwarvenSteam/1640_10-0.xml"
+        "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/MORROWIND - DwarvenSteam/1640_10-0.xml",
+        "Assets/Game/Mods/villain-and-monster-variety/Textures/Enemy Expansion/KAMER - Witches/1516_25-0.png"
     ],
     "Dependencies": [
         {
