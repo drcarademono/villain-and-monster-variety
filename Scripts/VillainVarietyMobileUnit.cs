@@ -638,8 +638,7 @@ namespace VillainVariety
         private void CacheRecordSizesAndFrames(DaggerfallUnity dfUnity, int archive)
         {
             // Open texture file
-            
-            if (VillagerVarietyModEnabled && GameManager.Instance.PlayerGPS.CurrentRegionIndex == 26 && archive == 399) { // Orsinium guards
+            if (OBttOModEnabled && GameManager.Instance.PlayerGPS.CurrentRegionIndex == 26 && archive == 399) { // Orsinium guards
                 archive = 262;
             }
 
@@ -911,6 +910,9 @@ namespace VillainVariety
 
 	    private static bool VillagerVarietyModEnabled;
 
+	    private static Mod OBttOMod;
+	    public static bool OBttOModEnabled;
+
         [Invoke(StateManager.StateTypes.Start, 0)]
         public static void Init(InitParams initParams)
         {
@@ -923,6 +925,12 @@ namespace VillainVariety
 		    if (VillagerVarietyMod != null && VillagerVarietyMod.Enabled)
 		    {
 			    VillagerVarietyModEnabled = true;
+		    }
+
+		    OBttOMod = ModManager.Instance.GetModFromGUID("cfb09fd1-e525-40eb-bcf9-18b9abdebe46");
+		    if (OBttOMod != null && OBttOMod.Enabled)
+		    {
+			    OBttOModEnabled = true;
 		    }
 
             mod.IsReady = true;

@@ -1,6 +1,6 @@
 {
     "ModTitle": "Vanilla Enhanced - Villains & Monsters",
-    "ModVersion": "3.4.6",
+    "ModVersion": "3.4.9",
     "ModAuthor": "carademono, Kab, Ninelan, Kamer",
     "ContactInfo": "Lysandus' Tomb Discord server",
     "DFUnity_Version": "1.0.0",
@@ -21045,7 +21045,8 @@
         "Assets/Game/Mods/villain-and-monster-variety/Textures/EotB/foot4/3804_29-2.png",
         "Assets/Game/Mods/villain-and-monster-variety/Textures/EotB/foot0/3800_17-0.png",
         "Assets/Game/Mods/villain-and-monster-variety/Textures/EotB/foot9/3809_6-3.png",
-        "Assets/Game/Mods/villain-and-monster-variety/Textures/EotB/horse4/3904_12-7.png"
+        "Assets/Game/Mods/villain-and-monster-variety/Textures/EotB/horse4/3904_12-7.png",
+        "Assets/Game/Mods/rmb-resource-pack/Assets/Textures/NPCs/1200_52-0.png"
     ],
     "Dependencies": [
         {
